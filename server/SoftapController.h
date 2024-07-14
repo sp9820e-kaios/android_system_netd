@@ -26,6 +26,7 @@
 #define AP_SET_CFG_DELAY	500000
 #define AP_DRIVER_START_DELAY	800000
 #define AP_CHANNEL_DEFAULT	6
+#define AP_MAX_NUM_STA_DEFAULT 255
 
 class SoftapController {
 public:
@@ -37,8 +38,10 @@ public:
     bool isSoftapStarted();
     int setSoftap(int argc, char *argv[]);
     int fwReloadSoftap(int argc, char *argv[]);
+    int setSoftapWhiteListEnable(bool enable);
 private:
     pid_t mPid;
+    int mMacAddrAcl; //from macaddr_acl define in hostapd
     void generatePsk(char *ssid, char *passphrase, char *psk);
 };
 

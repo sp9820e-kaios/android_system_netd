@@ -112,6 +112,7 @@ void NetlinkHandler::onEvent(NetlinkEvent *evt) {
     } else if (!strcmp(subsys, "strict")) {
         const char *uid = evt->findParam("UID");
         const char *hex = evt->findParam("HEX");
+        ALOGD("subsystem strict uid: %s", uid);
         notifyStrictCleartext(uid, hex);
 
     } else if (!strcmp(subsys, "xt_idletimer")) {

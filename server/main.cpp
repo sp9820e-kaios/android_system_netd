@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <cutils/properties.h>
 
 #include <fcntl.h>
 #include <dirent.h>
@@ -39,10 +40,16 @@
 static void blockSigpipe();
 static void remove_pid_file();
 static bool write_pid_file();
+static void checkStatus(pid_t status);
+static void enableNetPacketLog();
 
 const char* const PID_FILE_PATH = "/data/misc/net/netd_pid";
 const int PID_FILE_FLAGS = O_CREAT | O_TRUNC | O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
 const mode_t PID_FILE_MODE = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;  // mode 0644, rw-r--r--
+
+//SPRD for save network packet
+const char* const NETWORK_PACKET_SAVE_PROPERTY = "persist.sys.net.packet";
+const char* const NETWORK_PACKET_SAVE_DEFAULT = "true";
 
 int main() {
 
@@ -99,6 +106,10 @@ int main() {
         exit(1);
     }
 
+    sleep(5);
+    //exe save network packet log cmd
+    enableNetPacketLog();
+
     bool wrote_pid = write_pid_file();
 
     while(1) {
@@ -153,4 +164,46 @@ static void blockSigpipe()
     sigaddset(&mask, SIGPIPE);
     if (sigprocmask(SIG_BLOCK, &mask, NULL) != 0)
         ALOGW("WARNING: SIGPIPE not blocked\n");
+}
+
+static void checkStatus(pid_t status)
+{
+    if (-1 == status)
+    {
+        ALOGD("enableNetPacketLog system error!");
+    }
+    else
+    {
+        if (WIFEXITED(status)) {
+            if (0 == WEXITSTATUS(status)) {
+                ALOGD("enableNetPacketLog run shell script successfully!");
+            }
+            else {
+                ALOGD("enableNetPacketLog run shell script fail, script exit code: %d", WEXITSTATUS(status));
+            }
+        } else {
+            ALOGD("enableNetPacketLog exit exception = [%d]", WEXITSTATUS(status));
+        }
+    }
+}
+
+static void enableNetPacketLog()
+{
+    pid_t status = 0;
+    char NetworkPktProperty[10] = {0};
+    property_get(NETWORK_PACKET_SAVE_PROPERTY, NetworkPktProperty, 0);
+    ALOGD("enableNetPacketLog len: %d  + result: %s", property_get(NETWORK_PACKET_SAVE_PROPERTY, NetworkPktProperty, NETWORK_PACKET_SAVE_DEFAULT), NetworkPktProperty);
+    if (1 == atoi(NetworkPktProperty)) {
+        ALOGD("enableNetPacketLog");
+        status = system("iptables -w -I OUTPUT -m limit --limit 3/m -j LOG --log-uid");
+        checkStatus(status);
+        ALOGD("enableNetPacketLog ipv6");
+        status = system("ip6tables -w -I OUTPUT -m limit --limit 3/m -j LOG --log-uid");
+        checkStatus(status);
+    }
+    else
+    {
+        ALOGD("enableNetPacketLog flag not set");
+        return;
+    }
 }

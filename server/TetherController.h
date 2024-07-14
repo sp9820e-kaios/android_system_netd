@@ -23,6 +23,8 @@
 
 #include "List.h"
 
+#define NETD_SUPPORT_USB_IPV6_TETHERING
+
 typedef android::netd::List<char *> InterfaceCollection;
 typedef android::netd::List<struct in_addr> NetAddressCollection;
 
@@ -35,6 +37,16 @@ class TetherController {
     pid_t                 mDaemonPid;
     int                   mDaemonFd;
     std::set<std::string> mForwardingRequests;
+
+#ifdef NETD_SUPPORT_USB_IPV6_TETHERING
+    int                   mRadvdPid;
+    bool                 mRadvdStarted;
+    char                 mV6Interface[32];
+    char                 mV6TetheredInterface[32];
+    char                mV6networkaddr[64];
+    //bool                mV6InterfaceChanged;
+    int                   mDhcp6sPid;
+#endif
 
 public:
     TetherController();
@@ -56,9 +68,23 @@ public:
     int untetherInterface(const char *interface);
     InterfaceCollection *getTetheredInterfaceList();
 
+#ifdef NETD_SUPPORT_USB_IPV6_TETHERING
+    int addV6RadvdIface(const char *iface);
+    int rmV6RadvdIface(const char *iface);
+
+    int startRadvd(char *up_interface, bool idle_check);
+    int stopRadvd(void);
+#endif
+
 private:
     int applyDnsInterfaces();
     bool setIpFwdEnabled();
+#ifdef NETD_SUPPORT_USB_IPV6_TETHERING
+    int startDhcp6s(char *dns1, char *dns2);
+    int stopDhcp6s(void);
+    int applyIpV6Rule(void);
+    int clearIpV6Rule(void);
+#endif
 };
 
 #endif

@@ -26,6 +26,10 @@ LOCAL_CLANG := true
 LOCAL_CPPFLAGS := -std=c++11 -Wall -Werror
 LOCAL_MODULE := netd
 
+ifeq ($(BOARD_WLAN_DEVICE), sc2351)
+LOCAL_CPPFLAGS += -DSOFTAP_WHITELIST_DISABLE
+endif
+
 LOCAL_SHARED_LIBRARIES := \
         libcrypto \
         libcutils \

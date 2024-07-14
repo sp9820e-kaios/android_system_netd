@@ -658,6 +658,18 @@ int CommandListener::TetherCmd::runCommand(SocketClient *cli,
                              "Unknown tether interface operation", false);
                 return 0;
             }
+#ifdef NETD_SUPPORT_USB_IPV6_TETHERING
+        } else if (!strcmp(argv[1], "radvd")) { //add for IPV6 	620
+            if (!strcmp(argv[2], "add_upstream")) {
+                rc = sTetherCtrl->addV6RadvdIface(argv[3]);
+            } else if (!strcmp(argv[2], "remove_upstream")) {
+                rc = sTetherCtrl->rmV6RadvdIface(argv[3]);
+            } else {
+                cli->sendMsg(ResponseCode::CommandParameterError,
+                             "Unknown tether radvd operation", false);
+                return 0;
+            }
+#endif
         } else {
             cli->sendMsg(ResponseCode::CommandSyntaxError, "Unknown tether cmd", false);
             return 0;
@@ -798,6 +810,12 @@ int CommandListener::SoftapCmd::runCommand(SocketClient *cli,
         return 0;
     } else if (!strcmp(argv[1], "set")) {
         rc = sSoftapCtrl->setSoftap(argc, argv);
+    } else if (!strcmp(argv[1], "whitelist")) {//add for change softap white list enable
+        if ((argc >= 3) && (!strcmp(argv[2], "true"))) { //enable white list
+            rc = sSoftapCtrl->setSoftapWhiteListEnable(true);
+        } else {
+            rc = sSoftapCtrl->setSoftapWhiteListEnable(false);
+        }
     } else {
         cli->sendMsg(ResponseCode::CommandSyntaxError, "Unrecognized SoftAP command", false);
         return 0;

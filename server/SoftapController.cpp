@@ -51,7 +51,7 @@ static const char HOSTAPD_CONF_FILE[]    = "/data/misc/wifi/hostapd.conf";
 static const char HOSTAPD_BIN_FILE[]    = "/system/bin/hostapd";
 
 SoftapController::SoftapController()
-    : mPid(0) {}
+    : mPid(0), mMacAddrAcl(0){}
 
 SoftapController::~SoftapController() {
 }
@@ -123,6 +123,7 @@ bool SoftapController::isSoftapStarted() {
 int SoftapController::setSoftap(int argc, char *argv[]) {
     int hidden = 0;
     int channel = AP_CHANNEL_DEFAULT;
+    int max_num_sta = AP_MAX_NUM_STA_DEFAULT;
 
     if (argc < 5) {
         ALOGE("Softap set is missing arguments. Please use:");
@@ -139,6 +140,13 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
             channel = AP_CHANNEL_DEFAULT;
     }
 
+    if (argc == 9) {
+        max_num_sta = atoi(argv[8]);
+        if (max_num_sta <= 0 || max_num_sta > 255)
+            max_num_sta = AP_MAX_NUM_STA_DEFAULT;
+   }
+
+#ifdef SOFTAP_WHITELIST_DISABLE
     std::string wbuf(StringPrintf("interface=%s\n"
             "driver=nl80211\n"
             "ctrl_interface=/data/misc/wifi/hostapd\n"
@@ -147,8 +155,32 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
             "ieee80211n=1\n"
             "hw_mode=%c\n"
             "ignore_broadcast_ssid=%d\n"
-            "wowlan_triggers=any\n",
-            argv[2], argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden));
+            "wowlan_triggers=any\n"
+            "max_num_sta=%d\n"
+            "config_methods=virtual_push_button keypad\n"
+            "eap_server=1\n"
+            "wps_state=2\n"
+            "ap_setup_locked=1\n",
+            argv[2], argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden, max_num_sta));
+#else
+    std::string wbuf(StringPrintf("interface=%s\n"
+            "driver=nl80211\n"
+            "ctrl_interface=/data/misc/wifi/hostapd\n"
+            "ssid=%s\n"
+            "channel=%d\n"
+            "ieee80211n=1\n"
+            "hw_mode=%c\n"
+            "ignore_broadcast_ssid=%d\n"
+            "wowlan_triggers=any\n"
+            "max_num_sta=%d\n"
+            "macaddr_acl=%d\n"
+            "accept_mac_file=/data/misc/wifi/hostapd.accept\n"
+            "config_methods=virtual_push_button keypad\n"
+            "eap_server=1\n"
+            "wps_state=2\n"
+            "ap_setup_locked=1\n",
+            argv[2], argv[3], channel, (channel <= 14) ? 'g' : 'a', hidden, max_num_sta, mMacAddrAcl));
+#endif
 
     std::string fbuf;
     if (argc > 7) {
@@ -220,4 +252,17 @@ void SoftapController::generatePsk(char *ssid, char *passphrase, char *psk_str) 
     for (j=0; j < SHA256_DIGEST_LENGTH; j++) {
         sprintf(&psk_str[j*2], "%02x", psk[j]);
     }
+}
+
+/**
+ * set mode //set the softap white list enabled or not
+ * enable:
+ *  1 : white list enabled
+ *  0 : white list disabled
+*/
+int SoftapController::setSoftapWhiteListEnable(bool enable) {
+
+    mMacAddrAcl = (enable?1:0);
+
+    return ResponseCode::SoftapStatusResult;
 }
